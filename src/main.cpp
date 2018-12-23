@@ -61,14 +61,16 @@ Adafruit_SSD1306 display(-1);
 //set at your will ...
 #define MIDI_CHANNEL 1 //the MIDI channel you want your box to listen to (1-16)
 #define REVERSE_GATE 0 //V-Trig = 0, S-Trig = 1
-#define CC_NUMBER 19 //MIDI CC number
 bool HZV = 1; //set to "0" for V/oct
 
+int midiCC1 = 19;
+int midiCC2 = 20;
 //Adafruit_MCP4725 dac;
 
 byte gatePin = 12;
 byte velocityPin = 10; //pwm frequency is going to be increased for this in the setup
-byte CCPin = 9; //pwm frequency is going to be increased for this in the setup
+byte CC1Pin = 9; //pwm frequency is going to be increased for this in the setup
+byte CC2Pin = 8;
 
 float outVoltmV;
 int velocityOut;
@@ -83,22 +85,34 @@ float VoctShift = -2.0;
 byte lastNote;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-
-void handleNoteOn(byte channel, byte note, byte velocity) {
+void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     display.clearDisplay();
     display.setCursor(0,0);
-    display.print("CH");
+    display.setTextColor(BLACK, WHITE);
+    display.print("CHAN");
+    display.setTextColor(WHITE);
     display.setCursor(0,15);
-    display.print(channel);
+    display.print(MIDI_CHANNEL);
     display.setCursor(0,40);
-    display.print("NO");
+    display.print("CC1");
     display.setCursor(0,55);
-    display.print(note);
+    display.print(midiCC1);
+    if(activeCC == 1) {
+        display.setCursor(0,65);
+        display.print(activeValue);
+    }
     display.setCursor(0,80);
-    display.print("V");
+    display.print("CC2");
     display.setCursor(0,95);
-    display.print(velocity);
+    display.print(midiCC2);
+    if(activeCC == 2) {
+      display.setCursor(0,105);
+      display.print(activeValue);
+    }
     display.display();
+}
+
+void handleNoteOn(byte channel, byte note, byte velocity) {
     lastNote = note;
     //Hz/V; x 1000 because map truncates decimals
     if (HZV) {
@@ -132,24 +146,14 @@ void handleNoteOff(byte channel, byte note, byte velocity){
 }
 
 void handleControlChange(byte channel, byte number, byte value){
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("CH");
-    display.setCursor(0,15);
-    display.print(channel);
-    display.setCursor(0,40);
-    display.print("CC");
-    display.setCursor(0,55);
-    display.print(number);
-    display.setCursor(0,80);
-    display.print("V");
-    display.setCursor(0,95);
-    display.print(value);
-    display.display();
-
-    if(number == CC_NUMBER) {
+    if(number == midiCC1) {
         CCOut = map(value, 0, 127, 0, 255);
-        analogWrite(CCPin, CCOut);
+        analogWrite(CC1Pin, CCOut);
+        updateDisplay(1, value);
+    }else if(number == midiCC2) {
+        CCOut = map(value, 0, 127, 0, 255);
+        analogWrite(CC2Pin, CCOut);
+        updateDisplay(2, value);
     }
 }
 
@@ -164,7 +168,8 @@ void setup() {
     //setup pins
     pinMode(gatePin, OUTPUT);
     pinMode(velocityPin, OUTPUT);
-    pinMode(CCPin, OUTPUT);
+    pinMode(CC1Pin, OUTPUT);
+    pinMode(CC2Pin, OUTPUT);
 
     if(REVERSE_GATE==1){
         //S-Trig
@@ -192,22 +197,21 @@ void setup() {
     display.display();
 
     // display a line of text
-    display.setTextSize(1);
+    display.setTextSize(2);
     display.setTextColor(WHITE);
     display.setCursor(0,0);
     display.print("MIDI");
-    display.setCursor(0,25);
-    display.print("CC:");
+    display.setCursor(0,50);
+    display.print("2");
+    display.setCursor(0,100);
+    display.print("CV");
 
     display.display();
-//    display.setCursor(30,0);
-    //display.print("303030303"); //display.setTextSize(2);
-    delay(5);
-    display.setTextSize(2);
-    // update display with all of the above graphics
+    delay(2000);
+    display.setTextSize(1);
+    updateDisplay();
 }
 
 void loop() {
     MIDI.read(MIDI_CHANNEL);
-//    display.display();
 }
