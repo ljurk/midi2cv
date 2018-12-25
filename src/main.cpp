@@ -52,11 +52,20 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_MCP4725.h>
 #include <MIDI.h>
+#include <Encoder.h>
+
+bool debug = false;
 
 // OLED display TWI address
 #define OLED_ADDR   0x3C
 
 Adafruit_SSD1306 display(-1);
+
+//setup encoder
+Encoder myEnc = Encoder(2,3);
+byte encoderButtonPin = 4;
+int oldEncoderPos = 0;
+int newEncoderPos = 0;
 
 //set at your will ...
 #define MIDI_CHANNEL 1 //the MIDI channel you want your box to listen to (1-16)
@@ -67,14 +76,17 @@ int midiCC1 = 19;
 int midiCC2 = 20;
 //Adafruit_MCP4725 dac;
 
+//digital
 byte gatePin = 12;
+//analog
 byte velocityPin = 10; //pwm frequency is going to be increased for this in the setup
-byte CC1Pin = 9; //pwm frequency is going to be increased for this in the setup
-byte CC2Pin = 8;
+byte CC1Pin = 8; //pwm frequency is going to be increased for this in the setup
+byte CC2Pin = 9;
 
 float outVoltmV;
 int velocityOut;
 int CCOut;
+
 uint16_t dacValue;
 //CHANGE IF BY PRESSING "C" ON YOUR KEYBOARD YOU HAVE ANOTHER NOTE OUTPUTTED BY THE SYNTH (HZ/V).
 int noteHZVshift = -1;//With external USB hub I had to set this to "-1". With PC USB to "+2".
@@ -171,10 +183,11 @@ void setup() {
     pinMode(CC1Pin, OUTPUT);
     pinMode(CC2Pin, OUTPUT);
 
-    if(REVERSE_GATE==1){
+    if(REVERSE_GATE == 1){
         //S-Trig
         digitalWrite(gatePin, HIGH);
     } else {
+        //V-Trig
         digitalWrite(gatePin, LOW);
     }
 
@@ -213,5 +226,21 @@ void setup() {
 }
 
 void loop() {
+    newEncoderPos = myEnc.read();
+    //encoder
+    if(newEncoderPos != oldEncoderPos) {
+        if(newEncoderPos > oldEncoderPos + 2) {
+            if(debug) {
+                Serial.println("turn right");
+            }
+            oldEncoderPos = newEncoderPos;
+        } else if(newEncoderPos < oldEncoderPos - 2) {
+            //turn left
+            if(debug) {
+                Serial.println("turn left");
+            }
+            oldEncoderPos = newEncoderPos;
+        }
+    }
     MIDI.read(MIDI_CHANNEL);
 }
