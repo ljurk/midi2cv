@@ -64,17 +64,24 @@ Adafruit_SSD1306 display(-1);
 //setup encoder
 Encoder myEnc = Encoder(2,3);
 byte encoderButtonPin = 4;
+bool encoderButtonState = false;
 int oldEncoderPos = 0;
 int newEncoderPos = 0;
 
 //set at your will ...
-#define MIDI_CHANNEL 1 //the MIDI channel you want your box to listen to (1-16)
 #define REVERSE_GATE 0 //V-Trig = 0, S-Trig = 1
 bool HZV = 1; //set to "0" for V/oct
 
+byte ccMax = 255;
+byte midiChannel = 1;
 int midiCC1 = 19;
 int midiCC2 = 20;
 //Adafruit_MCP4725 dac;
+
+//true = menu, false = editing
+bool mode = true;
+//0 = channel, 1 = cc1, 2 = cc2
+int editMenu = 0;
 
 //digital
 byte gatePin = 12;
@@ -97,15 +104,23 @@ float VoctShift = -2.0;
 byte lastNote;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
+void setActiveMenuColor(byte m) {
+    if(editMenu == m) {
+        display.setTextColor(BLACK, WHITE);
+    } else {
+        display.setTextColor(WHITE);
+    }
+}
 void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     display.clearDisplay();
     display.setCursor(0,0);
-    display.setTextColor(BLACK, WHITE);
+    setActiveMenuColor(0);
     display.print("CHAN");
     display.setTextColor(WHITE);
     display.setCursor(0,15);
-    display.print(MIDI_CHANNEL);
+    display.print(midiChannel);
     display.setCursor(0,40);
+    setActiveMenuColor(1);
     display.print("CC1");
     display.setCursor(0,55);
     display.print(midiCC1);
@@ -114,6 +129,7 @@ void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
         display.print(activeValue);
     }
     display.setCursor(0,80);
+    setActiveMenuColor(2);
     display.print("CC2");
     display.setCursor(0,95);
     display.print(midiCC2);
@@ -124,6 +140,61 @@ void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     display.display();
 }
 
+void editValue(bool dir) {
+    if(dir) { //plus
+        switch(editMenu) {
+            case 0:
+                if(midiChannel == 16) {
+                    midiChannel = 0;
+                } else {
+                    midiChannel++;
+                }
+                break;
+            case 1:
+                if(midiCC1 == ccMax) {
+                    midiCC1 = 0;
+                } else {
+                    midiCC1++;
+                }
+                break;
+            case 2:
+                if(midiCC1 == ccMax) {
+                    midiCC2 = 0;
+                } else {
+                    midiCC2++;
+                }
+                break;
+            default:
+                break;
+        }
+    } else { //minus
+        switch(editMenu) {
+            case 0:
+                if(midiChannel == 1) {
+                    midiChannel = 16;
+                } else {
+                    midiChannel--;
+                }
+                break;
+            case 1:
+                if(midiCC1 == 0) {
+                    midiCC1 = ccMax;
+                } else {
+                    midiCC1--;
+                }
+                break;
+            case 2:
+                if(midiCC1 == 0) {
+                    midiCC2 = ccMax;
+                } else {
+                    midiCC2--;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
 void handleNoteOn(byte channel, byte note, byte velocity) {
     lastNote = note;
     //Hz/V; x 1000 because map truncates decimals
@@ -196,8 +267,8 @@ void setup() {
     MIDI.setHandleNoteOff(handleNoteOff);
     MIDI.setHandleControlChange(handleControlChange);
 
-    //// start MIDI and listen to channel "MIDI_CHANNEL"
-    MIDI.begin(MIDI_CHANNEL);
+    //// start MIDI and listen to channel "midiChannel"
+    MIDI.begin(midiChannel);
     //// For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     //// For MCP4725A0 the address is 0x60 or 0x61
     //// For MCP4725A2 the address is 0x64 or 0x65
@@ -227,20 +298,44 @@ void setup() {
 
 void loop() {
     newEncoderPos = myEnc.read();
+    encoderButtonState = digitalRead(encoderButtonPin);
     //encoder
     if(newEncoderPos != oldEncoderPos) {
         if(newEncoderPos > oldEncoderPos + 2) {
             if(debug) {
                 Serial.println("turn right");
             }
+            if(mode) {//menu
+                if(editMenu != 2) {
+                    editMenu++;
+                } else {
+                    editMenu = 0;
+                }
+            } else {
+                editValue(true);
+            }
+
             oldEncoderPos = newEncoderPos;
         } else if(newEncoderPos < oldEncoderPos - 2) {
             //turn left
+            if(mode) {//menu
+                if(editMenu != 0) {
+                    editMenu--;
+                } else {
+                    editMenu = 2;
+                }
+            } else {
+                editValue(false);
+            }
+
             if(debug) {
                 Serial.println("turn left");
             }
             oldEncoderPos = newEncoderPos;
         }
     }
-    MIDI.read(MIDI_CHANNEL);
+    if(encoderButtonState == HIGH) {
+        mode = !mode;
+    }
+    MIDI.read(midiChannel);
 }
