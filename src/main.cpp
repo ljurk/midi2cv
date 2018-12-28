@@ -77,7 +77,8 @@ byte ccMax = 255;
 byte midiChannel = 1;
 int midiCC1 = 19;
 int midiCC2 = 20;
-//Adafruit_MCP4725 dac;
+
+Adafruit_MCP4725 dac;
 
 //true = menu, false = editing
 bool mode = true;
@@ -85,7 +86,7 @@ bool mode = true;
 int editMenu = 0;
 
 //digital
-byte gatePin = 12;
+byte gatePin = 10;
 //analog
 byte velocityPin = 10; //pwm frequency is going to be increased for this in the setup
 byte CC1Pin = 8; //pwm frequency is going to be increased for this in the setup
@@ -112,6 +113,7 @@ void setValueColor(byte m) {
         display.setTextColor(WHITE);
     }
 }
+
 void setMenuColor(byte m) {
     if(editMenu == m && mode == true) {
         display.setTextColor(BLACK, WHITE);
@@ -119,6 +121,7 @@ void setMenuColor(byte m) {
         display.setTextColor(WHITE);
     }
 }
+
 void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     display.clearDisplay();
 
@@ -226,7 +229,7 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
         outVoltmV = 1000*((note*VoctLinCoeff)+ VoctShift);
     }
     dacValue = constrain(map(outVoltmV, 0, 5000, 0, 4095), 0, 4095);
-    //dac.setVoltage(dacValue, false);
+    dac.setVoltage(dacValue, false);
     if(REVERSE_GATE == 1) {
         digitalWrite(gatePin, LOW);
     } else {
@@ -238,7 +241,7 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
 
 void handleNoteOff(byte channel, byte note, byte velocity){
     if(note == lastNote) {
-        //dac.setVoltage(0, false);
+        dac.setVoltage(0, false);
         if(REVERSE_GATE == 1) {
             digitalWrite(gatePin, HIGH);
         } else {
@@ -296,7 +299,7 @@ void setup() {
     //// For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     //// For MCP4725A0 the address is 0x60 or 0x61
     //// For MCP4725A2 the address is 0x64 or 0x65
-    //dac.begin(0x60);
+    dac.begin(0x62);
 
     // initialize and clear display
     display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
