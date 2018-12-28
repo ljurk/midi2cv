@@ -65,6 +65,7 @@ Adafruit_SSD1306 display(-1);
 Encoder myEnc = Encoder(2,3);
 byte encoderButtonPin = 4;
 bool encoderButtonState = false;
+bool encoderButtonPressed = false;
 int oldEncoderPos = 0;
 int newEncoderPos = 0;
 
@@ -104,8 +105,15 @@ float VoctShift = -2.0;
 byte lastNote;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-void setActiveMenuColor(byte m) {
-    if(editMenu == m) {
+void setValueColor(byte m) {
+    if(editMenu == m && mode == false) {
+        display.setTextColor(BLACK, WHITE);
+    } else {
+        display.setTextColor(WHITE);
+    }
+}
+void setMenuColor(byte m) {
+    if(editMenu == m && mode == true) {
         display.setTextColor(BLACK, WHITE);
     } else {
         display.setTextColor(WHITE);
@@ -113,29 +121,41 @@ void setActiveMenuColor(byte m) {
 }
 void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     display.clearDisplay();
+
     display.setCursor(0,0);
-    setActiveMenuColor(0);
+    setMenuColor(0);
     display.print("CHAN");
-    display.setTextColor(WHITE);
+
     display.setCursor(0,15);
+    setValueColor(0);
     display.print(midiChannel);
+
     display.setCursor(0,40);
-    setActiveMenuColor(1);
+    setMenuColor(1);
     display.print("CC1");
+
     display.setCursor(0,55);
+    setValueColor(1);
     display.print(midiCC1);
+
     if(activeCC == 1) {
+        display.setTextColor(WHITE);
         display.setCursor(0,65);
         display.print(activeValue);
     }
+
     display.setCursor(0,80);
-    setActiveMenuColor(2);
+    setMenuColor(2);
     display.print("CC2");
+
     display.setCursor(0,95);
+    setValueColor(2);
     display.print(midiCC2);
+
     if(activeCC == 2) {
-      display.setCursor(0,105);
-      display.print(activeValue);
+        display.setTextColor(WHITE);
+        display.setCursor(0,105);
+        display.print(activeValue);
     }
     display.display();
 }
@@ -268,7 +288,11 @@ void setup() {
     MIDI.setHandleControlChange(handleControlChange);
 
     //// start MIDI and listen to channel "midiChannel"
-    MIDI.begin(midiChannel);
+    if(debug) {
+        Serial.begin(9600);
+    } else {
+        MIDI.begin(midiChannel);
+    }
     //// For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     //// For MCP4725A0 the address is 0x60 or 0x61
     //// For MCP4725A2 the address is 0x64 or 0x65
@@ -282,7 +306,7 @@ void setup() {
 
     // display a line of text
     display.setTextSize(2);
-    display.setTextColor(WHITE);
+    display.setTextColor(BLACK, WHITE);
     display.setCursor(0,0);
     display.print("MIDI");
     display.setCursor(0,50);
@@ -314,7 +338,7 @@ void loop() {
             } else {
                 editValue(true);
             }
-
+            updateDisplay();
             oldEncoderPos = newEncoderPos;
         } else if(newEncoderPos < oldEncoderPos - 2) {
             //turn left
@@ -327,15 +351,23 @@ void loop() {
             } else {
                 editValue(false);
             }
-
+            updateDisplay();
             if(debug) {
                 Serial.println("turn left");
             }
             oldEncoderPos = newEncoderPos;
         }
     }
-    if(encoderButtonState == HIGH) {
+    if(encoderButtonState == HIGH && encoderButtonPressed == false) {
         mode = !mode;
+        if(debug) {
+            Serial.println("Buttonpress");
+            Serial.println(mode);
+        }
+        updateDisplay();
+        encoderButtonPressed = true;
+    } else if(encoderButtonState == LOW) {
+        encoderButtonPressed = false;
     }
     MIDI.read(midiChannel);
 }
