@@ -56,6 +56,7 @@
 
 bool debug = false;
 
+#define NUMBER_OF_CC 4
 // OLED display TWI address
 #define OLED_ADDR   0x3C
 
@@ -75,8 +76,6 @@ bool HZV = 1; //set to "0" for V/oct
 
 byte ccMax = 255;
 byte midiChannel = 1;
-int midiCC1 = 19;
-int midiCC2 = 20;
 
 Adafruit_MCP4725 dac;
 
@@ -88,13 +87,14 @@ int editMenu = 0;
 //digital
 byte gatePin = 10;
 //analog
-byte velocityPin = 10; //pwm frequency is going to be increased for this in the setup
-byte CC1Pin = 8; //pwm frequency is going to be increased for this in the setup
-byte CC2Pin = 9;
+byte velocityPin = 5; //pwm frequency is going to be increased for this in the setup
 
 float outVoltmV;
 int velocityOut;
 int CCOut;
+
+unsigned long lastUpdateTime = 0;  // the last time the output pin was toggled
+unsigned long updateDelay = 500;    // the debounce time; increase if the output flickers
 
 uint16_t dacValue;
 //CHANGE IF BY PRESSING "C" ON YOUR KEYBOARD YOU HAVE ANOTHER NOTE OUTPUTTED BY THE SYNTH (HZ/V).
@@ -106,118 +106,107 @@ float VoctShift = -2.0;
 byte lastNote;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-void setValueColor(byte m) {
-    if(editMenu == m && mode == false) {
-        display.setTextColor(BLACK, WHITE);
-    } else {
-        display.setTextColor(WHITE);
-    }
-}
+String midiNumber[17] = {"0", "I", "II", "III", "IV", "V", "VI", "VII", "VII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"};
 
-void setMenuColor(byte m) {
-    if(editMenu == m && mode == true) {
-        display.setTextColor(BLACK, WHITE);
-    } else {
-        display.setTextColor(WHITE);
-    }
+struct ccInfo {
+    byte pin;
+    byte midiCC;
+    byte value;
+    byte displayPos;
+    byte valuePos;
+};
+
+ccInfo avaibleCC[NUMBER_OF_CC];
+
+void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, byte valuePos) {
+    avaibleCC[index].pin = pin;
+    avaibleCC[index].midiCC = midiCC;
+    avaibleCC[index].value = value;
+    avaibleCC[index].displayPos = displayPos;
+    avaibleCC[index].valuePos = valuePos;
 }
 
 void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
-    display.clearDisplay();
+    //only every second
+    if ((millis() - lastUpdateTime) > updateDelay) {
+        lastUpdateTime = millis();
 
-    display.setCursor(0,0);
-    setMenuColor(0);
-    display.print("CHAN");
+        display.clearDisplay();
 
-    display.setCursor(0,15);
-    setValueColor(0);
-    display.print(midiChannel);
+        display.setCursor(0,0);
+        char symbol = ':';
+        if(mode == false && editMenu == 0) {
+            symbol = '>';
+        } else if(editMenu == 0) {
+            symbol = '<';
+        }
+        String out = "c";
+        out += symbol;
+        out += String(midiChannel);
+        display.print(out);
 
-    display.setCursor(0,40);
-    setMenuColor(1);
-    display.print("CC1");
+        display.drawLine(0,10,64,10,WHITE);
+        
+        for(byte i = 0; i < NUMBER_OF_CC; i++) {
+            display.setCursor(0,avaibleCC[i].displayPos);
+            symbol = ':';
+            if(mode == false && editMenu == i + 1) {
+                symbol = '>';
+            }else if(editMenu == i + 1) {
+                symbol = '<';
+            }
+            out = "C" + String(i+1) + symbol + String(avaibleCC[i].midiCC);
+            display.print(out);
+        }
 
-    display.setCursor(0,55);
-    setValueColor(1);
-    display.print(midiCC1);
-
-    if(activeCC == 1) {
-        display.setTextColor(WHITE);
-        display.setCursor(0,65);
-        display.print(activeValue);
+        for(byte i = 0; i < NUMBER_OF_CC; i++) {
+            display.setCursor(14, avaibleCC[i].valuePos);
+            display.print(avaibleCC[i].value);
+        }
+        display.display();
     }
-
-    display.setCursor(0,80);
-    setMenuColor(2);
-    display.print("CC2");
-
-    display.setCursor(0,95);
-    setValueColor(2);
-    display.print(midiCC2);
-
-    if(activeCC == 2) {
-        display.setTextColor(WHITE);
-        display.setCursor(0,105);
-        display.print(activeValue);
-    }
-    display.display();
 }
 
 void editValue(bool dir) {
     if(dir) { //plus
-        switch(editMenu) {
-            case 0:
-                if(midiChannel == 16) {
-                    midiChannel = 0;
-                } else {
-                    midiChannel++;
+        if(editMenu == 0) {
+            if(midiChannel == 16) {
+                midiChannel = 0;
+            } else {
+                midiChannel++;
+            }
+        } else {
+            for(byte i = 0; i < NUMBER_OF_CC; i++) {
+                if(i == editMenu -1) {
+                    if(avaibleCC[i].midiCC == ccMax) {
+                        avaibleCC[i].midiCC = 0;
+                    } else {
+                        avaibleCC[i].midiCC++;
+                    }
                 }
-                break;
-            case 1:
-                if(midiCC1 == ccMax) {
-                    midiCC1 = 0;
-                } else {
-                    midiCC1++;
-                }
-                break;
-            case 2:
-                if(midiCC1 == ccMax) {
-                    midiCC2 = 0;
-                } else {
-                    midiCC2++;
-                }
-                break;
-            default:
-                break;
+            }
         }
     } else { //minus
-        switch(editMenu) {
-            case 0:
-                if(midiChannel == 1) {
-                    midiChannel = 16;
-                } else {
-                    midiChannel--;
+        if(editMenu == 0) {
+            if(midiChannel == 0) {
+                midiChannel = 16;
+            } else {
+                midiChannel--;
+            }
+        } else {
+            for(byte i = 0; i < NUMBER_OF_CC; i++) {
+                if(i == editMenu -1) {
+                    if(avaibleCC[i].midiCC == 0) {
+                        avaibleCC[i].midiCC = ccMax;
+                    } else {
+                        avaibleCC[i].midiCC--;
+                    }
                 }
-                break;
-            case 1:
-                if(midiCC1 == 0) {
-                    midiCC1 = ccMax;
-                } else {
-                    midiCC1--;
-                }
-                break;
-            case 2:
-                if(midiCC1 == 0) {
-                    midiCC2 = ccMax;
-                } else {
-                    midiCC2--;
-                }
-                break;
-            default:
-                break;
+            }
         }
     }
 }
+
 void handleNoteOn(byte channel, byte note, byte velocity) {
     lastNote = note;
     //Hz/V; x 1000 because map truncates decimals
@@ -252,30 +241,34 @@ void handleNoteOff(byte channel, byte note, byte velocity){
 }
 
 void handleControlChange(byte channel, byte number, byte value){
-    if(number == midiCC1) {
-        CCOut = map(value, 0, 127, 0, 255);
-        analogWrite(CC1Pin, CCOut);
-        updateDisplay(1, value);
-    }else if(number == midiCC2) {
-        CCOut = map(value, 0, 127, 0, 255);
-        analogWrite(CC2Pin, CCOut);
-        updateDisplay(2, value);
+    for(byte i = 0; i < NUMBER_OF_CC; i++) {
+        if(number == avaibleCC[i].midiCC) {
+            avaibleCC[i].value = value;
+            CCOut = map(value, 0, 127, 0, 255);
+            analogWrite(avaibleCC[i].pin, CCOut);
+        }
     }
 }
 
 void setup() {
+    lastUpdateTime = millis();
     //For Arduino Uno, Nano, and any other board using ATmega 8, 168 or 328
     //TCCR0B = TCCR0B & B11111000 | B00000001;
     //// D5, D6: set timer 0 divisor to 1 for PWM frequency of 62500.00 Hz
     TCCR1B = (TCCR1B & B11111000) | B00000001;    // D9, D10: set timer 1 divisor to 1 for PWM frequency of 31372.55 Hz
     //TCCR2B = TCCR2B & B11111000 | B00000001;
     //// D3, D11: set timer 2 divisor to 1 for PWM frequency of 31372.55 Hz
+    fillStruct(0,  6, 20, 23, 15, 25);
+    fillStruct(1,  9, 21, 33, 40, 50);
+    fillStruct(2, 11, 22, 77, 65, 75);
+    fillStruct(3,  3, 23, 99, 90, 100);
 
     //setup pins
     pinMode(gatePin, OUTPUT);
     pinMode(velocityPin, OUTPUT);
-    pinMode(CC1Pin, OUTPUT);
-    pinMode(CC2Pin, OUTPUT);
+    for(byte i = 0; i < NUMBER_OF_CC; i++) {
+        pinMode(avaibleCC[i].pin, OUTPUT);
+    }
 
     if(REVERSE_GATE == 1){
         //S-Trig
@@ -296,6 +289,8 @@ void setup() {
     } else {
         MIDI.begin(midiChannel);
     }
+    Serial.println("avaibleCC.size()");
+    Serial.println(sizeof(avaibleCC));
     //// For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     //// For MCP4725A0 the address is 0x60 or 0x61
     //// For MCP4725A2 the address is 0x64 or 0x65
@@ -309,7 +304,7 @@ void setup() {
 
     // display a line of text
     display.setTextSize(2);
-    display.setTextColor(BLACK, WHITE);
+    display.setTextColor(WHITE);
     display.setCursor(0,0);
     display.print("MIDI");
     display.setCursor(0,50);
@@ -320,7 +315,6 @@ void setup() {
     display.display();
     delay(2000);
     display.setTextSize(1);
-    updateDisplay();
 }
 
 void loop() {
@@ -333,7 +327,7 @@ void loop() {
                 Serial.println("turn right");
             }
             if(mode) {//menu
-                if(editMenu != 2) {
+                if(editMenu != NUMBER_OF_CC) {
                     editMenu++;
                 } else {
                     editMenu = 0;
@@ -341,7 +335,6 @@ void loop() {
             } else {
                 editValue(true);
             }
-            updateDisplay();
             oldEncoderPos = newEncoderPos;
         } else if(newEncoderPos < oldEncoderPos - 2) {
             //turn left
@@ -349,12 +342,11 @@ void loop() {
                 if(editMenu != 0) {
                     editMenu--;
                 } else {
-                    editMenu = 2;
+                    editMenu = NUMBER_OF_CC;
                 }
             } else {
                 editValue(false);
             }
-            updateDisplay();
             if(debug) {
                 Serial.println("turn left");
             }
@@ -367,10 +359,10 @@ void loop() {
             Serial.println("Buttonpress");
             Serial.println(mode);
         }
-        updateDisplay();
         encoderButtonPressed = true;
     } else if(encoderButtonState == LOW) {
         encoderButtonPressed = false;
     }
     MIDI.read(midiChannel);
+    updateDisplay();
 }
