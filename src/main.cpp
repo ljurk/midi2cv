@@ -54,7 +54,7 @@
 #include <MIDI.h>
 #include <Encoder.h>
 
-bool debug = false;
+bool debug = true;
 
 #define NUMBER_OF_CC 4
 // OLED display TWI address
@@ -63,7 +63,7 @@ bool debug = false;
 Adafruit_SSD1306 display(-1);
 
 //setup encoder
-Encoder myEnc = Encoder(2,3);
+Encoder myEnc = Encoder(3,2);
 byte encoderButtonPin = 4;
 bool encoderButtonState = false;
 bool encoderButtonPressed = false;
@@ -94,7 +94,7 @@ int velocityOut;
 int CCOut;
 
 unsigned long lastUpdateTime = 0;  // the last time the output pin was toggled
-unsigned long updateDelay = 500;    // the debounce time; increase if the output flickers
+unsigned long updateDelay = 200;    // the debounce time; increase if the output flickers
 
 uint16_t dacValue;
 //CHANGE IF BY PRESSING "C" ON YOUR KEYBOARD YOU HAVE ANOTHER NOTE OUTPUTTED BY THE SYNTH (HZ/V).
@@ -159,48 +159,31 @@ void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
             display.print(out);
         }
 
+        byte barWidth = 0;
         for(byte i = 0; i < NUMBER_OF_CC; i++) {
-            display.setCursor(14, avaibleCC[i].valuePos);
-            display.print(avaibleCC[i].value);
+            barWidth = (avaibleCC[i].value * 32) / 255;
+            display.fillRect(0, avaibleCC[i].valuePos, barWidth, 5, WHITE);
         }
         display.display();
     }
 }
 
-void editValue(bool dir) {
-    if(dir) { //plus
-        if(editMenu == 0) {
-            if(midiChannel == 16) {
-                midiChannel = 0;
-            } else {
-                midiChannel++;
-            }
-        } else {
-            for(byte i = 0; i < NUMBER_OF_CC; i++) {
-                if(i == editMenu -1) {
-                    if(avaibleCC[i].midiCC == ccMax) {
-                        avaibleCC[i].midiCC = 0;
-                    } else {
-                        avaibleCC[i].midiCC++;
-                    }
-                }
-            }
-        }
-    } else { //minus
-        if(editMenu == 0) {
-            if(midiChannel == 0) {
+void editValue(int range) {
+    if(editMenu == 0) {
+        midiChannel += range;
+        if(midiChannel == 17) {
+            midiChannel = 0;
+        } else if(midiChannel == -1) {
                 midiChannel = 16;
-            } else {
-                midiChannel--;
-            }
-        } else {
-            for(byte i = 0; i < NUMBER_OF_CC; i++) {
-                if(i == editMenu -1) {
-                    if(avaibleCC[i].midiCC == 0) {
-                        avaibleCC[i].midiCC = ccMax;
-                    } else {
-                        avaibleCC[i].midiCC--;
-                    }
+        }
+    } else {
+        for(byte i = 0; i < NUMBER_OF_CC; i++) {
+            if(i == editMenu -1) {
+                avaibleCC[i].value += range;
+                if(avaibleCC[i].value >= ccMax) {
+                    avaibleCC[i].value = 0;
+                } else if(avaibleCC[i].value <= -1) {
+                    avaibleCC[i].value = 255;
                 }
             }
         }
@@ -261,7 +244,7 @@ void setup() {
     fillStruct(0,  6, 20, 23, 15, 25);
     fillStruct(1,  9, 21, 33, 40, 50);
     fillStruct(2, 11, 22, 77, 65, 75);
-    fillStruct(3,  3, 23, 99, 90, 100);
+    fillStruct(3,  12, 23, 99, 90, 100);
 
     //setup pins
     pinMode(gatePin, OUTPUT);
@@ -289,8 +272,6 @@ void setup() {
     } else {
         MIDI.begin(midiChannel);
     }
-    Serial.println("avaibleCC.size()");
-    Serial.println(sizeof(avaibleCC));
     //// For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     //// For MCP4725A0 the address is 0x60 or 0x61
     //// For MCP4725A2 the address is 0x64 or 0x65
@@ -333,7 +314,11 @@ void loop() {
                     editMenu = 0;
                 }
             } else {
-                editValue(true);
+                if(encoderButtonState == HIGH) {
+                    editValue(20);
+                }else{
+                    editValue(1);
+                }
             }
             oldEncoderPos = newEncoderPos;
         } else if(newEncoderPos < oldEncoderPos - 2) {
@@ -345,7 +330,11 @@ void loop() {
                     editMenu = NUMBER_OF_CC;
                 }
             } else {
-                editValue(false);
+                if(encoderButtonState == HIGH) {
+                    editValue(-20);
+                }else{
+                    editValue(-1);
+                }
             }
             if(debug) {
                 Serial.println("turn left");
