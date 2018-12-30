@@ -126,6 +126,30 @@ void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, b
     avaibleCC[index].valuePos = valuePos;
 }
 
+void startingAnimation(int waitTime) {
+    for(int i = 0; i < 5; i++) {
+        display.drawRect(i *2, i*2, 128-2 * (i*2),32- 2 * (i*2),WHITE);
+    }
+    display.drawCircle(16, 16, 5, WHITE);
+    display.drawCircle(128-16, 16, 5, WHITE);
+    display.setRotation(1);
+    display.setCursor(14, 25);
+    display.print("M");
+    display.setCursor(14, 35);
+    display.print("I");
+    display.setCursor(14, 45);
+    display.print("D");
+    display.setCursor(14, 55);
+    display.print("I");
+    display.setCursor(14, 70);
+    display.print("2");
+    display.setCursor(14, 85);
+    display.print("C");
+    display.setCursor(14, 95);
+    display.print("V");
+    display.display();
+    delay(waitTime);
+}
 void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     //only every second
     if ((millis() - lastUpdateTime) > updateDelay) {
@@ -146,7 +170,7 @@ void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
         display.print(out);
 
         display.drawLine(0,10,64,10,WHITE);
-        
+
         for(byte i = 0; i < NUMBER_OF_CC; i++) {
             display.setCursor(0,avaibleCC[i].displayPos);
             symbol = ':';
@@ -279,23 +303,14 @@ void setup() {
 
     // initialize and clear display
     display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
-    display.setRotation(1);
     display.clearDisplay();
     display.display();
-
-    // display a line of text
-    display.setTextSize(2);
     display.setTextColor(WHITE);
-    display.setCursor(0,0);
-    display.print("MIDI");
-    display.setCursor(0,50);
-    display.print("2");
-    display.setCursor(0,100);
-    display.print("CV");
-
-    display.display();
-    delay(2000);
     display.setTextSize(1);
+
+    startingAnimation(5000);
+
+    display.setRotation(1);
 }
 
 void loop() {
