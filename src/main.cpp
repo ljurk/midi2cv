@@ -106,9 +106,10 @@ float VoctShift = -2.0;
 byte lastNote;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-String midiNumber[17] = {"0", "I", "II", "III", "IV", "V", "VI", "VII", "VII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"};
+String midiNumber[17] = {"all", "I", "II", "III", "IV", "V", "VI", "VII", "VII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"};
 
-struct ccInfo {
+struct ccInfo
+{
     byte pin;
     byte midiCC;
     byte value;
@@ -118,7 +119,8 @@ struct ccInfo {
 
 ccInfo avaibleCC[NUMBER_OF_CC];
 
-void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, byte valuePos) {
+void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, byte valuePos)
+{
     avaibleCC[index].pin = pin;
     avaibleCC[index].midiCC = midiCC;
     avaibleCC[index].value = value;
@@ -126,7 +128,8 @@ void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, b
     avaibleCC[index].valuePos = valuePos;
 }
 
-void startingAnimation(int waitTime) {
+void startingAnimation(int waitTime)
+{
     for(int i = 0; i < 5; i++) {
         display.drawRect(i *2, i*2, 128-2 * (i*2),32- 2 * (i*2),WHITE);
     }
@@ -150,7 +153,9 @@ void startingAnimation(int waitTime) {
     display.display();
     delay(waitTime);
 }
-void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
+
+void updateDisplay(byte activeCC = 0, byte activeValue = 0)
+{
     //only every second
     if ((millis() - lastUpdateTime) > updateDelay) {
         lastUpdateTime = millis();
@@ -192,7 +197,8 @@ void updateDisplay(byte activeCC = 0, byte activeValue = 0) {
     }
 }
 
-void editValue(int range) {
+void editValue(int range)
+{
     if(editMenu == 0) {
         midiChannel += range;
         if(midiChannel == 17) {
@@ -214,7 +220,8 @@ void editValue(int range) {
     }
 }
 
-void handleNoteOn(byte channel, byte note, byte velocity) {
+void handleNoteOn(byte channel, byte note, byte velocity)
+{
     lastNote = note;
     //Hz/V; x 1000 because map truncates decimals
     if (HZV) {
@@ -235,7 +242,8 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
     analogWrite(velocityPin, velocityOut);
 }
 
-void handleNoteOff(byte channel, byte note, byte velocity){
+void handleNoteOff(byte channel, byte note, byte velocity)
+{
     if(note == lastNote) {
         dac.setVoltage(0, false);
         if(REVERSE_GATE == 1) {
@@ -247,7 +255,8 @@ void handleNoteOff(byte channel, byte note, byte velocity){
     }
 }
 
-void handleControlChange(byte channel, byte number, byte value){
+void handleControlChange(byte channel, byte number, byte value)
+{
     for(byte i = 0; i < NUMBER_OF_CC; i++) {
         if(number == avaibleCC[i].midiCC) {
             avaibleCC[i].value = value;
@@ -257,7 +266,11 @@ void handleControlChange(byte channel, byte number, byte value){
     }
 }
 
-void setup() {
+void setup()
+{
+    if(debug) {
+        Serial.print(MIDI_CHANNEL_OMNI);
+    }
     lastUpdateTime = millis();
     //For Arduino Uno, Nano, and any other board using ATmega 8, 168 or 328
     //TCCR0B = TCCR0B & B11111000 | B00000001;
@@ -313,7 +326,8 @@ void setup() {
     display.setRotation(1);
 }
 
-void loop() {
+void loop()
+{
     newEncoderPos = myEnc.read();
     encoderButtonState = digitalRead(encoderButtonPin);
     //encoder
