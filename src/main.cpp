@@ -56,7 +56,8 @@
 
 bool debug = false;
 
-#define NUMBER_OF_CC 4
+#define NUMBER_OF_CC 6
+#define NUMBER_OF_GATES 5
 
 //set at your will ...
 #define REVERSE_GATE 0 //V-Trig = 0, S-Trig = 1
@@ -91,6 +92,13 @@ byte lastNote;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 
+struct noteInfo
+{
+    byte pin;
+    byte note;
+    bool triggered;
+};
+
 struct ccInfo
 {
     byte pin;
@@ -101,8 +109,9 @@ struct ccInfo
 };
 
 ccInfo avaibleCC[NUMBER_OF_CC];
+noteInfo avaibleNotes[NUMBER_OF_GATES];
 
-void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, byte valuePos)
+void fillCcStruct(bool cc, int index, byte pin, byte midiCC, byte value, byte displayPos, byte valuePos)
 {
     avaibleCC[index].pin = pin;
     avaibleCC[index].midiCC = midiCC;
@@ -111,7 +120,11 @@ void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, b
     avaibleCC[index].valuePos = valuePos;
 }
 
-
+void fillNoteStruct(int index, byte pin, byte note, byte triggered) {
+    avaibleNotes[index].pin = pin;
+    avaibleNotes[index].note = note;
+    avaibleNotes[index].triggered = false;
+}
 
 void editValue(int range)
 {
@@ -194,10 +207,12 @@ void setup()
     TCCR1B = (TCCR1B & B11111000) | B00000001;    // D9, D10: set timer 1 divisor to 1 for PWM frequency of 31372.55 Hz
     //TCCR2B = TCCR2B & B11111000 | B00000001;
     //// D3, D11: set timer 2 divisor to 1 for PWM frequency of 31372.55 Hz
-    fillStruct(0,  6, 20, 23, 15, 25);
-    fillStruct(1,  9, 21, 33, 40, 50);
-    fillStruct(2, 11, 22, 77, 65, 75);
-    fillStruct(3,  12, 23, 99, 90, 100);
+    fillCcStruct(0,  6, 20, 23, 15, 25);
+    fillCcStruct(1,  9, 21, 33, 40, 50);
+    fillCcStruct(2,  11, 22, 77, 65, 75);
+    fillCcStruct(3,  10, 23, 99, 90, 100);
+    fillCcStruct(4,  3, 23, 99, 90, 100);
+    fillCcStruct(5,  5, 23, 99, 90, 100);
 
     //setup pins
     pinMode(gatePin, OUTPUT);
