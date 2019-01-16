@@ -16,6 +16,9 @@
  * Arduino gate OUT pin (pin 12 by default) to synth gate/trigger IN via 1K Ohm resistor
  * Arduino velocity OUT pin (pin 10 by default) to synth VCA IN via RC filter (1K Ohm, 100uF)
  * Arduino MIDI CC OUT pin (pin 9 by default) to synth VCF IN via RC filter (1K Ohm, 100uF)
+ * 
+ * Arduino PWM-Pins: 3, 5, 6, 9, 10, 11
+ * Arduino Gate-Pins: 2, 4, 7, 8, 12
  * DAC OUT to synth VCO IN
  *
  * MIDI messages table:
@@ -54,21 +57,11 @@
 #include <MIDI.h>
 #include <Encoder.h>
 
-bool debug = true;
+bool debug = false;
 
 #define NUMBER_OF_CC 4
-// OLED display TWI address
-#define OLED_ADDR   0x3C
 
-Adafruit_SSD1306 display(-1);
 
-//setup encoder
-Encoder myEnc = Encoder(3,2);
-byte encoderButtonPin = 4;
-bool encoderButtonState = false;
-bool encoderButtonPressed = false;
-int oldEncoderPos = 0;
-int newEncoderPos = 0;
 
 //set at your will ...
 #define REVERSE_GATE 0 //V-Trig = 0, S-Trig = 1
@@ -94,7 +87,7 @@ int velocityOut;
 int CCOut;
 
 unsigned long lastUpdateTime = 0;  // the last time the output pin was toggled
-unsigned long updateDelay = 200;    // the debounce time; increase if the output flickers
+unsigned long updateDelay = 500;    // the debounce time; increase if the output flickers
 
 uint16_t dacValue;
 //CHANGE IF BY PRESSING "C" ON YOUR KEYBOARD YOU HAVE ANOTHER NOTE OUTPUTTED BY THE SYNTH (HZ/V).
@@ -104,9 +97,9 @@ float VoctLinCoeff = 0.0790;//If your +5V are straight +5.000V this is 1/12 = 0.
 //CHANGE TO SHIFT BY OCTAVES (V/oct).
 float VoctShift = -2.0;
 byte lastNote;
+bool triggered = false;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-String midiNumber[17] = {"all", "I", "II", "III", "IV", "V", "VI", "VII", "VII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"};
 
 struct ccInfo
 {
@@ -128,74 +121,7 @@ void fillStruct(int index, byte pin, byte midiCC, byte value, byte displayPos, b
     avaibleCC[index].valuePos = valuePos;
 }
 
-void startingAnimation(int waitTime)
-{
-    for(int i = 0; i < 5; i++) {
-        display.drawRect(i *2, i*2, 128-2 * (i*2),32- 2 * (i*2),WHITE);
-    }
-    display.drawCircle(16, 16, 5, WHITE);
-    display.drawCircle(128-16, 16, 5, WHITE);
-    display.setRotation(1);
-    display.setCursor(14, 25);
-    display.print("M");
-    display.setCursor(14, 35);
-    display.print("I");
-    display.setCursor(14, 45);
-    display.print("D");
-    display.setCursor(14, 55);
-    display.print("I");
-    display.setCursor(14, 70);
-    display.print("2");
-    display.setCursor(14, 85);
-    display.print("C");
-    display.setCursor(14, 95);
-    display.print("V");
-    display.display();
-    delay(waitTime);
-}
 
-void updateDisplay(byte activeCC = 0, byte activeValue = 0)
-{
-    //only every second
-    if ((millis() - lastUpdateTime) > updateDelay) {
-        lastUpdateTime = millis();
-
-        display.clearDisplay();
-
-        display.setCursor(0,0);
-        char symbol = ':';
-        if(mode == false && editMenu == 0) {
-            symbol = '>';
-        } else if(editMenu == 0) {
-            symbol = '<';
-        }
-        String out = "c";
-        out += symbol;
-        out += String(midiChannel);
-        display.print(out);
-
-        display.drawLine(0,10,64,10,WHITE);
-
-        for(byte i = 0; i < NUMBER_OF_CC; i++) {
-            display.setCursor(0,avaibleCC[i].displayPos);
-            symbol = ':';
-            if(mode == false && editMenu == i + 1) {
-                symbol = '>';
-            }else if(editMenu == i + 1) {
-                symbol = '<';
-            }
-            out = "C" + String(i+1) + symbol + String(avaibleCC[i].midiCC);
-            display.print(out);
-        }
-
-        byte barWidth = 0;
-        for(byte i = 0; i < NUMBER_OF_CC; i++) {
-            barWidth = (avaibleCC[i].value * 32) / 255;
-            display.fillRect(0, avaibleCC[i].valuePos, barWidth, 5, WHITE);
-        }
-        display.display();
-    }
-}
 
 void editValue(int range)
 {
@@ -222,6 +148,7 @@ void editValue(int range)
 
 void handleNoteOn(byte channel, byte note, byte velocity)
 {
+    triggered = true;
     lastNote = note;
     //Hz/V; x 1000 because map truncates decimals
     if (HZV) {
@@ -244,6 +171,7 @@ void handleNoteOn(byte channel, byte note, byte velocity)
 
 void handleNoteOff(byte channel, byte note, byte velocity)
 {
+    triggered = false;
     if(note == lastNote) {
         dac.setVoltage(0, false);
         if(REVERSE_GATE == 1) {
@@ -315,63 +243,11 @@ void setup()
     dac.begin(0x62);
 
     // initialize and clear display
-    display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
-    display.clearDisplay();
-    display.display();
-    display.setTextColor(WHITE);
-    display.setTextSize(1);
-
-    startingAnimation(5000);
-
-    display.setRotation(1);
 }
 
 void loop()
 {
-    newEncoderPos = myEnc.read();
-    encoderButtonState = digitalRead(encoderButtonPin);
-    //encoder
-    if(newEncoderPos != oldEncoderPos) {
-        if(newEncoderPos > oldEncoderPos + 2) {
-            if(debug) {
-                Serial.println("turn right");
-            }
-            if(mode) {//menu
-                if(editMenu != NUMBER_OF_CC) {
-                    editMenu++;
-                } else {
-                    editMenu = 0;
-                }
-            } else {
-                if(encoderButtonState == HIGH) {
-                    editValue(20);
-                }else{
-                    editValue(1);
-                }
-            }
-            oldEncoderPos = newEncoderPos;
-        } else if(newEncoderPos < oldEncoderPos - 2) {
-            //turn left
-            if(mode) {//menu
-                if(editMenu != 0) {
-                    editMenu--;
-                } else {
-                    editMenu = NUMBER_OF_CC;
-                }
-            } else {
-                if(encoderButtonState == HIGH) {
-                    editValue(-20);
-                }else{
-                    editValue(-1);
-                }
-            }
-            if(debug) {
-                Serial.println("turn left");
-            }
-            oldEncoderPos = newEncoderPos;
-        }
-    }
-    if(encoderButtonState == HIGH && encoderButtonPressed == false) {
+    /*if(encoderButtonState == HIGH && encoderButtonPressed == false) {
         mode = !mode;
         if(debug) {
             Serial.println("Buttonpress");
@@ -380,7 +256,6 @@ void loop()
         encoderButtonPressed = true;
     } else if(encoderButtonState == LOW) {
         encoderButtonPressed = false;
-    }
+    }*/
     MIDI.read(midiChannel);
-    updateDisplay();
 }
