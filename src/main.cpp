@@ -51,17 +51,12 @@
  */
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_SSD1306.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_MCP4725.h>
 #include <MIDI.h>
-#include <Encoder.h>
 
 bool debug = false;
 
 #define NUMBER_OF_CC 4
-
-
 
 //set at your will ...
 #define REVERSE_GATE 0 //V-Trig = 0, S-Trig = 1
@@ -72,10 +67,6 @@ byte midiChannel = 1;
 
 Adafruit_MCP4725 dac;
 
-//true = menu, false = editing
-bool mode = true;
-//0 = channel, 1 = cc1, 2 = cc2
-int editMenu = 0;
 
 //digital
 byte gatePin = 10;
@@ -97,7 +88,6 @@ float VoctLinCoeff = 0.0790;//If your +5V are straight +5.000V this is 1/12 = 0.
 //CHANGE TO SHIFT BY OCTAVES (V/oct).
 float VoctShift = -2.0;
 byte lastNote;
-bool triggered = false;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 
@@ -148,7 +138,6 @@ void editValue(int range)
 
 void handleNoteOn(byte channel, byte note, byte velocity)
 {
-    triggered = true;
     lastNote = note;
     //Hz/V; x 1000 because map truncates decimals
     if (HZV) {
@@ -171,7 +160,6 @@ void handleNoteOn(byte channel, byte note, byte velocity)
 
 void handleNoteOff(byte channel, byte note, byte velocity)
 {
-    triggered = false;
     if(note == lastNote) {
         dac.setVoltage(0, false);
         if(REVERSE_GATE == 1) {
@@ -247,15 +235,5 @@ void setup()
 
 void loop()
 {
-    /*if(encoderButtonState == HIGH && encoderButtonPressed == false) {
-        mode = !mode;
-        if(debug) {
-            Serial.println("Buttonpress");
-            Serial.println(mode);
-        }
-        encoderButtonPressed = true;
-    } else if(encoderButtonState == LOW) {
-        encoderButtonPressed = false;
-    }*/
     MIDI.read(midiChannel);
 }
