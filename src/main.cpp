@@ -104,20 +104,16 @@ struct ccInfo
     byte pin;
     byte midiCC;
     byte value;
-    byte displayPos;
-    byte valuePos;
 };
 
 ccInfo avaibleCC[NUMBER_OF_CC];
 noteInfo avaibleNotes[NUMBER_OF_GATES];
 
-void fillCcStruct(bool cc, int index, byte pin, byte midiCC, byte value, byte displayPos, byte valuePos)
+void fillCcStruct( int index, byte pin, byte midiCC, byte value)
 {
     avaibleCC[index].pin = pin;
     avaibleCC[index].midiCC = midiCC;
     avaibleCC[index].value = value;
-    avaibleCC[index].displayPos = displayPos;
-    avaibleCC[index].valuePos = valuePos;
 }
 
 void fillNoteStruct(int index, byte pin, byte note, byte triggered) {
@@ -126,61 +122,56 @@ void fillNoteStruct(int index, byte pin, byte note, byte triggered) {
     avaibleNotes[index].triggered = false;
 }
 
-void editValue(int range)
+
+void handleNoteOn(byte channel, byte note, byte velocity)
 {
-    if(editMenu == 0) {
-        midiChannel += range;
-        if(midiChannel == 17) {
-            midiChannel = 0;
-        } else if(midiChannel == -1) {
-                midiChannel = 16;
+    if(channel == 1) {
+        lastNote = note;
+        //Hz/V; x 1000 because map truncates decimals
+        if (HZV) {
+            //0.125*1000
+            //V/oct; x 1000 because map truncates decimals
+            outVoltmV = 125.0*exp(0.0578*(note+noteHZVshift));
+        } else {
+            outVoltmV = 1000*((note*VoctLinCoeff)+ VoctShift);
         }
-    } else {
-        for(byte i = 0; i < NUMBER_OF_CC; i++) {
-            if(i == editMenu -1) {
-                avaibleCC[i].value += range;
-                if(avaibleCC[i].value >= ccMax) {
-                    avaibleCC[i].value = 0;
-                } else if(avaibleCC[i].value <= -1) {
-                    avaibleCC[i].value = 255;
-                }
+        dacValue = constrain(map(outVoltmV, 0, 5000, 0, 4095), 0, 4095);
+        dac.setVoltage(dacValue, false);
+        if(REVERSE_GATE == 1) {
+            digitalWrite(gatePin, LOW);
+        } else {
+            digitalWrite(gatePin, HIGH);
+        }
+        velocityOut = map(velocity, 0, 127, 0, 255);
+        analogWrite(velocityPin, velocityOut);
+    } else if(channel == 2) {
+        for(byte i = 0; i < NUMBER_OF_GATES_; i++) {
+            if(note == avaibleNotes[i].note) {
+                digitalWrite(avaibleNotes[i].pin, HIGH);
             }
         }
     }
 }
 
-void handleNoteOn(byte channel, byte note, byte velocity)
-{
-    lastNote = note;
-    //Hz/V; x 1000 because map truncates decimals
-    if (HZV) {
-        //0.125*1000
-        //V/oct; x 1000 because map truncates decimals
-        outVoltmV = 125.0*exp(0.0578*(note+noteHZVshift));
-    } else {
-        outVoltmV = 1000*((note*VoctLinCoeff)+ VoctShift);
-    }
-    dacValue = constrain(map(outVoltmV, 0, 5000, 0, 4095), 0, 4095);
-    dac.setVoltage(dacValue, false);
-    if(REVERSE_GATE == 1) {
-        digitalWrite(gatePin, LOW);
-    } else {
-        digitalWrite(gatePin, HIGH);
-    }
-    velocityOut = map(velocity, 0, 127, 0, 255);
-    analogWrite(velocityPin, velocityOut);
-}
-
 void handleNoteOff(byte channel, byte note, byte velocity)
 {
-    if(note == lastNote) {
-        dac.setVoltage(0, false);
-        if(REVERSE_GATE == 1) {
-            digitalWrite(gatePin, HIGH);
-        } else {
-            digitalWrite(gatePin, LOW);
+    if(channel == 1) {
+        if(note == lastNote) {
+            dac.setVoltage(0, false);
+            if(REVERSE_GATE == 1) {
+                digitalWrite(gatePin, HIGH);
+            } else {
+                digitalWrite(gatePin, LOW);
+            }
+            analogWrite(velocityPin, 0);
         }
-        analogWrite(velocityPin, 0);
+    }else if(channel == 2){
+        for(byte i = 0; i < NUMBER_OF_GATES_; i++) {
+            if(note == avaibleNotes[i].note) {
+                digitalWrite(avaibleNotes[i].pin, LOW);
+            }
+        }
+
     }
 }
 
@@ -202,17 +193,17 @@ void setup()
     }
     lastUpdateTime = millis();
     //For Arduino Uno, Nano, and any other board using ATmega 8, 168 or 328
-    //TCCR0B = TCCR0B & B11111000 | B00000001;
+    TCCR0B = TCCR0B & B11111000 | B00000001;
     //// D5, D6: set timer 0 divisor to 1 for PWM frequency of 62500.00 Hz
     TCCR1B = (TCCR1B & B11111000) | B00000001;    // D9, D10: set timer 1 divisor to 1 for PWM frequency of 31372.55 Hz
     //TCCR2B = TCCR2B & B11111000 | B00000001;
     //// D3, D11: set timer 2 divisor to 1 for PWM frequency of 31372.55 Hz
-    fillCcStruct(0,  6, 20, 23, 15, 25);
-    fillCcStruct(1,  9, 21, 33, 40, 50);
-    fillCcStruct(2,  11, 22, 77, 65, 75);
-    fillCcStruct(3,  10, 23, 99, 90, 100);
-    fillCcStruct(4,  3, 23, 99, 90, 100);
-    fillCcStruct(5,  5, 23, 99, 90, 100);
+    fillCcStruct(0,  6, 20, 23);
+    fillCcStruct(1,  9, 21, 33);
+    fillCcStruct(2,  11, 22, 77);
+    fillCcStruct(3,  10, 23, 99);
+    fillCcStruct(4,  3, 23, 99);
+    fillCcStruct(5,  5, 23, 99);
 
     //setup pins
     pinMode(gatePin, OUTPUT);
@@ -245,7 +236,6 @@ void setup()
     //// For MCP4725A2 the address is 0x64 or 0x65
     dac.begin(0x62);
 
-    // initialize and clear display
 }
 
 void loop()
