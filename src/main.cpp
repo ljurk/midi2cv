@@ -16,7 +16,17 @@
  * Arduino gate OUT pin (pin 12 by default) to synth gate/trigger IN via 1K Ohm resistor
  * Arduino velocity OUT pin (pin 10 by default) to synth VCA IN via RC filter (1K Ohm, 100uF)
  * Arduino MIDI CC OUT pin (pin 9 by default) to synth VCF IN via RC filter (1K Ohm, 100uF)
- * 
+ *
+ * Gate Pin for Channel 2:
+ * Note - Pin
+ * 32 - 2
+ * 33 - 4
+ * 34 - 7
+ * 34 - 8
+ *
+ * Gate Pin for Channel 1: 12
+ * reacts to every Note
+ *
  * Arduino PWM-Pins: 3, 5, 6, 9, 10, 11
  * Arduino Gate-Pins: 2, 4, 7, 8, 12
  * DAC OUT to synth VCO IN
@@ -70,7 +80,7 @@ Adafruit_MCP4725 dac;
 
 
 //digital
-byte gatePin = 10;
+byte channel1gatePin = 12;
 //analog
 byte velocityPin = 5; //pwm frequency is going to be increased for this in the setup
 
@@ -138,14 +148,14 @@ void handleNoteOn(byte channel, byte note, byte velocity)
         dacValue = constrain(map(outVoltmV, 0, 5000, 0, 4095), 0, 4095);
         dac.setVoltage(dacValue, false);
         if(REVERSE_GATE == 1) {
-            digitalWrite(gatePin, LOW);
+            digitalWrite(channel1gatePin, LOW);
         } else {
-            digitalWrite(gatePin, HIGH);
+            digitalWrite(channel1gatePin, HIGH);
         }
         velocityOut = map(velocity, 0, 127, 0, 255);
         analogWrite(velocityPin, velocityOut);
     } else if(channel == 2) {
-        for(byte i = 0; i < NUMBER_OF_GATES_; i++) {
+        for(byte i = 0; i < NUMBER_OF_GATES; i++) {
             if(note == avaibleNotes[i].note) {
                 digitalWrite(avaibleNotes[i].pin, HIGH);
             }
@@ -159,14 +169,14 @@ void handleNoteOff(byte channel, byte note, byte velocity)
         if(note == lastNote) {
             dac.setVoltage(0, false);
             if(REVERSE_GATE == 1) {
-                digitalWrite(gatePin, HIGH);
+                digitalWrite(channel1gatePin, HIGH);
             } else {
-                digitalWrite(gatePin, LOW);
+                digitalWrite(channel1gatePin, LOW);
             }
             analogWrite(velocityPin, 0);
         }
     }else if(channel == 2){
-        for(byte i = 0; i < NUMBER_OF_GATES_; i++) {
+        for(byte i = 0; i < NUMBER_OF_GATES; i++) {
             if(note == avaibleNotes[i].note) {
                 digitalWrite(avaibleNotes[i].pin, LOW);
             }
@@ -198,26 +208,36 @@ void setup()
     TCCR1B = (TCCR1B & B11111000) | B00000001;    // D9, D10: set timer 1 divisor to 1 for PWM frequency of 31372.55 Hz
     //TCCR2B = TCCR2B & B11111000 | B00000001;
     //// D3, D11: set timer 2 divisor to 1 for PWM frequency of 31372.55 Hz
-    fillCcStruct(0,  6, 20, 23);
-    fillCcStruct(1,  9, 21, 33);
-    fillCcStruct(2,  11, 22, 77);
-    fillCcStruct(3,  10, 23, 99);
-    fillCcStruct(4,  3, 23, 99);
-    fillCcStruct(5,  5, 23, 99);
 
+    fillCcStruct(0, 6, 20, 23);
+    fillCcStruct(1, 9, 21, 33);
+    fillCcStruct(2, 11, 22, 77);
+    fillCcStruct(3, 10, 23, 99);
+    fillCcStruct(4, 3, 23, 99);
+    fillCcStruct(5, 5, 23, 99);
+
+    //gates for channel 2
+    fillNoteStruct(0, 2, 0, false);
+    fillNoteStruct(1, 4, 1, false);
+    fillNoteStruct(2, 7, 2, false);
+    fillNoteStruct(3, 8, 3, false);
     //setup pins
-    pinMode(gatePin, OUTPUT);
+    pinMode(channel1gatePin, OUTPUT);
     pinMode(velocityPin, OUTPUT);
     for(byte i = 0; i < NUMBER_OF_CC; i++) {
         pinMode(avaibleCC[i].pin, OUTPUT);
     }
 
+    for(byte i = 0; i < NUMBER_OF_GATES; i++) {
+        pinMode(avaibleNotes[i].pin, OUTPUT);
+    }
+
     if(REVERSE_GATE == 1){
         //S-Trig
-        digitalWrite(gatePin, HIGH);
+        digitalWrite(channel1gatePin, HIGH);
     } else {
         //V-Trig
-        digitalWrite(gatePin, LOW);
+        digitalWrite(channel1gatePin, LOW);
     }
 
     ////setup MIDI handles
@@ -229,7 +249,7 @@ void setup()
     if(debug) {
         Serial.begin(9600);
     } else {
-        MIDI.begin(midiChannel);
+        MIDI.begin(MIDI_CHANNEL_OMNI);
     }
     //// For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     //// For MCP4725A0 the address is 0x60 or 0x61
@@ -240,5 +260,5 @@ void setup()
 
 void loop()
 {
-    MIDI.read(midiChannel);
+    MIDI.read(MIDI_CHANNEL_OMNI);
 }
