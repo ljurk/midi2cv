@@ -2,4 +2,24 @@ ARDUINO_DIR = /usr/share/arduino
 BOARD_TAG = uno
 ARDUINO_PORT = /dev/ttyAMA0
 ARDUINO_LIBS =
+
+#include arduino make file if "make" is called
+ifeq ($(MAKECMDGOALS),)
 include /usr/share/arduino/Arduino.mk
+endif
+
+#include arduino make file if "make build" is called
+ifeq ($(MAKECMDGOALS),build)
+include /usr/share/arduino/Arduino.mk
+endif
+
+all: build upload
+
+build:
+	@echo "ok"
+
+upload:
+	avrdude -p m328p -c gpio -U flash:w:build-uno/midi2cv.hex -F
+
+clean:
+	rm -r build-uno
