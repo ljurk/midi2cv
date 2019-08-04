@@ -25,4 +25,4 @@ upload:
 	avrdude -p m328p -c gpio -U flash:w:$(OBJDIR)/$(THISDIR).hex -F
 	@echo "##########upload ok##########"
 clean::
-	rm -r build-uno
+	rm -r $(OBJDIR)
