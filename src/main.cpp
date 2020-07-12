@@ -76,6 +76,9 @@ void handleNoteOff(byte channel, byte pitch, byte velocity) {
 
     //update velocity
     analogWrite(vel_pin, 0);
+
+    //update v/oct
+    AnalogOutput.setValue(0);
   
 }//handleNoteOff
 
