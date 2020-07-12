@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <AH_MCP4921.h>
 #include <MIDI.h>
 
@@ -36,53 +37,6 @@ long currentMillis;
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-void setup() {
-  pinMode(clk_pin, OUTPUT);
-  pinMode(gate_pin, OUTPUT);
-
-  pinMode(cc_one, OUTPUT);
-  pinMode(cc_two, OUTPUT);
-  pinMode(cc_three, OUTPUT);
-  pinMode(cc_four, OUTPUT);
-
-  pinMode(vel_pin, OUTPUT);
-
-  MIDI.setHandleNoteOn(handleNoteOn);
-  MIDI.setHandleNoteOff(handleNoteOff);
-  MIDI.setHandleControlChange(handleControlChange);
-  MIDI.setHandleClock(handleClock);
-  
-  MIDI.begin(MIDI_CHANNEL);
-
-  //Serial.begin(31250);
-
-  //digitalWrite(mcp_cs, HIGH);
-  digitalWrite(gate_pin, LOW);
-  digitalWrite(clk_pin, LOW);
-}
-
-void loop() {
-
-  MIDI.read();
-
-  
-  
-  if (i == clk_div()) {
-    digitalWrite(clk_pin, HIGH);
-    previousMillis = millis();
-  }
-
-  if (millis() - previousMillis == 20) {
-    digitalWrite(clk_pin, LOW);
-    
-  }
-
-  if (i >= clk_div()) {
-    i = 0;
-  }
-
-  
-}
 
 void handleClock(void){
   i++;
@@ -173,3 +127,46 @@ short clk_div() {
       break;
   }
 }//clk_div
+
+void setup() {
+  pinMode(clk_pin, OUTPUT);
+  pinMode(gate_pin, OUTPUT);
+
+  pinMode(cc_one, OUTPUT);
+  pinMode(cc_two, OUTPUT);
+  pinMode(cc_three, OUTPUT);
+  pinMode(cc_four, OUTPUT);
+
+  pinMode(vel_pin, OUTPUT);
+
+  MIDI.setHandleNoteOn(handleNoteOn);
+  MIDI.setHandleNoteOff(handleNoteOff);
+  MIDI.setHandleControlChange(handleControlChange);
+  MIDI.setHandleClock(handleClock);
+  
+  MIDI.begin(MIDI_CHANNEL);
+
+  //Serial.begin(31250);
+
+  //digitalWrite(mcp_cs, HIGH);
+  digitalWrite(gate_pin, LOW);
+  digitalWrite(clk_pin, LOW);
+}
+
+void loop() {
+  MIDI.read();
+
+  if (i == clk_div()) {
+    digitalWrite(clk_pin, HIGH);
+    previousMillis = millis();
+  }
+
+  if (millis() - previousMillis == 20) {
+    digitalWrite(clk_pin, LOW);
+    
+  }
+
+  if (i >= clk_div()) {
+    i = 0;
+  }
+}
