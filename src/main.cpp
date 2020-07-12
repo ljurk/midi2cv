@@ -5,10 +5,16 @@
 // ATmega ADC intern
 #define div_pin A5
 #define vel_pin 10
-#define cc_four 9
-#define cc_three 6
-#define cc_two 5
-#define cc_one 3
+
+// cc
+#define cc1 102
+#define cc2 103
+#define cc3 104
+#define cc4 105
+#define cc1pin 3
+#define cc2pin 5
+#define cc3pin 6
+#define cc4pin 9
 
 // digitale pins
 #define clk_pin 8
@@ -24,17 +30,11 @@
 
 AH_MCP4921 AnalogOutput(mcp_mosi, mcp_sck, mcp_cs);
 
-// cc
-short CC_one = 102;
-short CC_two = 103;
-short CC_three = 104;
-short CC_four = 105;
-
 // clock
 long previousMillis;
 bool clockHigh = false;
-short divider = 8;
-short dividerCounter = 0;
+byte divider = 8;
+byte dividerCounter = 0;
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
@@ -81,20 +81,20 @@ void handleNoteOff(byte channel, byte pitch, byte velocity) {
 }
 
 void handleControlChange(byte channel, byte number, byte value) {
-  if (number == CC_one) {
-    analogWrite(cc_one, map(value, 0, 127, 0, 255));
+  if (number == cc1) {
+    analogWrite(cc1pin, map(value, 0, 127, 0, 255));
   }
 
-  if (number == CC_two) {
-    analogWrite(cc_two, map(value, 0, 127, 0, 255));
+  if (number == cc2) {
+    analogWrite(cc2pin, map(value, 0, 127, 0, 255));
   }
 
-  if (number == CC_three) {
-    analogWrite(cc_three, map(value, 0, 127, 0, 255));
+  if (number == cc3) {
+    analogWrite(cc3pin, map(value, 0, 127, 0, 255));
   }
 
-  if (number == CC_four) {
-    analogWrite(cc_four, map(value, 0, 127, 0, 255));
+  if (number == cc4) {
+    analogWrite(cc4pin, map(value, 0, 127, 0, 255));
   }
 }
 
@@ -102,10 +102,10 @@ void setup() {
   pinMode(clk_pin, OUTPUT);
   pinMode(gate_pin, OUTPUT);
 
-  pinMode(cc_one, OUTPUT);
-  pinMode(cc_two, OUTPUT);
-  pinMode(cc_three, OUTPUT);
-  pinMode(cc_four, OUTPUT);
+  pinMode(cc1pin, OUTPUT);
+  pinMode(cc2pin, OUTPUT);
+  pinMode(cc3pin, OUTPUT);
+  pinMode(cc4pin, OUTPUT);
 
   pinMode(vel_pin, OUTPUT);
 
