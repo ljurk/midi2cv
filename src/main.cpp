@@ -78,20 +78,21 @@ void handleNoteOff(byte channel, byte pitch, byte velocity) {
 }
 
 void handleControlChange(byte channel, byte number, byte value) {
-  if (number == cc1) {
-    analogWrite(cc1pin, map(value, 0, 127, 0, 255));
-  }
-
-  if (number == cc2) {
-    analogWrite(cc2pin, map(value, 0, 127, 0, 255));
-  }
-
-  if (number == cc3) {
-    analogWrite(cc3pin, map(value, 0, 127, 0, 255));
-  }
-
-  if (number == cc4) {
-    analogWrite(cc4pin, map(value, 0, 127, 0, 255));
+    switch (number) {
+        case cc1:
+            analogWrite(cc1pin, map(value, 0, 127, 0, 255));
+            break;
+        case cc2:
+            analogWrite(cc2pin, map(value, 0, 127, 0, 255));
+            break;
+        case cc3:
+            analogWrite(cc3pin, map(value, 0, 127, 0, 255));
+            break;
+        case cc4:
+            analogWrite(cc4pin, map(value, 0, 127, 0, 255));
+            break;
+        case default:
+            break;
   }
 }
 
