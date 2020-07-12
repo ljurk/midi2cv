@@ -24,23 +24,29 @@
 
 AH_MCP4921 AnalogOutput(mcp_mosi,mcp_sck,mcp_cs);
 
-short divide;
-short i = 0;
-
+// cc
 short CC_one = 102;
 short CC_two = 103;
 short CC_three = 104;
 short CC_four = 105;
 
+// clock
 long previousMillis;
-long currentMillis;
+bool clockHigh = false;
+short divider = 8;
+short dividerCounter = 0;
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-
 void handleClock(void){
-  i++;
-
+    if (dividerCounter == divider) {
+        clockHigh = true;
+        previousMillis = millis();
+        digitalWrite(clk_pin, HIGH);
+        dividerCounter = 0;
+    } else {
+        dividerCounter++;
+    }
 }
 
 void  handleNoteOn(byte channel, byte pitch, byte velocity) {
@@ -95,39 +101,6 @@ void handleControlChange (byte channel, byte number, byte value) {
   }//CC_four
 }//handleControlChange
 
-short clk_div() {
-  int adc_val = analogRead(div_pin);
-
-  divide = adc_val >> 7;
-
-  switch(divide){
-    case 0:
-      return 3;
-      break;
-    case 1:
-      return 6;
-      break;
-    case 2:
-      return 12;
-      break;
-    case 3:
-      return 24;
-      break;
-    case 4:
-      return 24; 
-      break;
-    case 5:
-      return 48;
-      break;
-    case 6:
-      return 48;
-      break;
-    case 7:
-      return 96;
-      break;
-  }
-}//clk_div
-
 void setup() {
   pinMode(clk_pin, OUTPUT);
   pinMode(gate_pin, OUTPUT);
@@ -155,18 +128,8 @@ void setup() {
 
 void loop() {
   MIDI.read();
-
-  if (i == clk_div()) {
-    digitalWrite(clk_pin, HIGH);
-    previousMillis = millis();
-  }
-
-  if (millis() - previousMillis == 20) {
+  if (clockHigh == true && millis() - previousMillis >= 50) {
     digitalWrite(clk_pin, LOW);
-    
-  }
-
-  if (i >= clk_div()) {
-    i = 0;
+    clockHigh = false;
   }
 }
