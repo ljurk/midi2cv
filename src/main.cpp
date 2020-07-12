@@ -97,31 +97,31 @@ void handleControlChange(byte channel, byte number, byte value) {
 }
 
 void setup() {
-  pinMode(clk_pin, OUTPUT);
-  pinMode(gate_pin, OUTPUT);
+    pinMode(clk_pin, OUTPUT);
+    pinMode(gate_pin, OUTPUT);
 
-  pinMode(cc1pin, OUTPUT);
-  pinMode(cc2pin, OUTPUT);
-  pinMode(cc3pin, OUTPUT);
-  pinMode(cc4pin, OUTPUT);
+    pinMode(cc1pin, OUTPUT);
+    pinMode(cc2pin, OUTPUT);
+    pinMode(cc3pin, OUTPUT);
+    pinMode(cc4pin, OUTPUT);
 
-  pinMode(vel_pin, OUTPUT);
+    pinMode(vel_pin, OUTPUT);
 
-  MIDI.setHandleNoteOn(handleNoteOn);
-  MIDI.setHandleNoteOff(handleNoteOff);
-  MIDI.setHandleControlChange(handleControlChange);
-  MIDI.setHandleClock(handleClock);
+    MIDI.setHandleNoteOn(handleNoteOn);
+    MIDI.setHandleNoteOff(handleNoteOff);
+    MIDI.setHandleControlChange(handleControlChange);
+    MIDI.setHandleClock(handleClock);
 
-  MIDI.begin(MIDI_CHANNEL);
+    MIDI.begin(MIDI_CHANNEL);
 
-  digitalWrite(gate_pin, LOW);
-  digitalWrite(clk_pin, LOW);
+    digitalWrite(gate_pin, LOW);
+    digitalWrite(clk_pin, LOW);
 }
 
 void loop() {
-  MIDI.read();
-  if (clockHigh == true && millis() - previousMillis >= 50) {
-    digitalWrite(clk_pin, LOW);
-    clockHigh = false;
-  }
+    MIDI.read();
+    if (clockHigh == true && millis() - previousMillis >= 50) {
+        digitalWrite(clk_pin, LOW);
+        clockHigh = false;
+    }
 }
