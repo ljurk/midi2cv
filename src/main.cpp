@@ -20,26 +20,31 @@
 #define clk_pin 8
 #define gate_pin 4
 
-// mcp4921 Pins
+// mcp4921
 #define mcp_mosi 11
 #define mcp_sck 13
 #define mcp_cs 7
+// update MCP4921
+// Aref vom DAC ist genau 5V -> (1/12)*5V = 0,0833
+#define VOctLinCoeff 0.0833
+// DAC ist auf A0 bis A5 gestimmt!
+#define VOctShift -1.75
 
 // MIDI Sachen
 #define MIDI_CHANNEL 13
+#define MIDI_CLOCK_DIVIDER 8
 
 AH_MCP4921 AnalogOutput(mcp_mosi, mcp_sck, mcp_cs);
 
 // clock
 long previousMillis;
 bool clockHigh = false;
-byte divider = 8;
 byte dividerCounter = 0;
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 void handleClock(void) {
-    if (dividerCounter == divider) {
+    if (dividerCounter == MIDI_CLOCK_DIVIDER) {
         clockHigh = true;
         previousMillis = millis();
         digitalWrite(clk_pin, HIGH);
@@ -51,14 +56,6 @@ void handleClock(void) {
 
 void  handleNoteOn(byte channel, byte pitch, byte velocity) {
     digitalWrite(gate_pin, HIGH);
-
-    // update MCP4921
-    // Aref vom DAC ist genau 5V -> (1/12)*5V = 0,0833
-    const float VOctLinCoeff = 0.0833;
-
-    // const float note = map(pitch, 0, 127, 0, 4095);
-    // DAC ist auf A0 bis A5 gestimmt!
-    const float VOctShift = -1.75;
 
     // funktion in der Klammer gibt werte von 0 - 5 raus
     // *1000 weil map funktion die kommastellen abschneidet
